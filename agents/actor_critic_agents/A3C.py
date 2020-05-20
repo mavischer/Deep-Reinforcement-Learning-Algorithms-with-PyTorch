@@ -8,6 +8,7 @@ from torch.multiprocessing import Queue
 from torch.optim import Adam
 from agents.Base_Agent import Base_Agent
 from utilities.Utility_Functions import create_actor_distribution, SharedAdam
+from DRRL.attention_module import DRRLnet
 
 class A3C(Base_Agent):
     """Actor critic A3C algorithm from deepmind paper https://arxiv.org/pdf/1602.01783.pdf"""
@@ -16,8 +17,14 @@ class A3C(Base_Agent):
         super(A3C, self).__init__(config)
         self.num_processes = multiprocessing.cpu_count()
         self.worker_processes = max(1, self.num_processes - 2)
-        self.actor_critic = self.create_NN(input_dim=self.state_size, output_dim=[self.action_size, 1])
+
+        self.actor_critic = DRRLnet(10, 10, self.action_size, n_f_conv1 = 12, n_f_conv2 = 12,
+                 att_emb_size=32, n_heads=2, n_att_stack=1, n_fc_layers=4, pad=True,
+                 baseline_mode=False, n_baseMods=3)
         self.actor_critic_optimizer = SharedAdam(self.actor_critic.parameters(), lr=self.hyperparameters["learning_rate"], eps=1e-4)
+        self.actor_critic_optimizer.zero_grad()
+        # self.actor_critic = self.create_NN(input_dim=self.state_size, output_dim=[self.action_size, 1])
+        # self.actor_critic_optimizer = SharedAdam(self.actor_critic.parameters(), lr=self.hyperparameters["learning_rate"], eps=1e-4)
 
     def run_n_episodes(self):
         """Runs game to completion n times and then summarises results and saves model (if asked to)"""
@@ -224,6 +231,25 @@ class Actor_Critic_Worker(torch.multiprocessing.Process):
         self.local_optimizer.zero_grad()
         total_loss.backward()
         torch.nn.utils.clip_grad_norm_(self.local_model.parameters(), self.gradient_clipping_norm)
-        gradients = [param.grad.clone() for param in self.local_model.parameters()]
+        gradients = []
+        for param in self.local_model.parameters():
+            try:
+                gradients.append(param.grad.clone())
+            except:
+                gradients.append(torch.zeros(param.shape))
+        # gradients = [param.grad.clone() for param in self.local_model.parameters()]
         self.gradient_updates_queue.put(gradients)
-
+#
+# class AttA3C(Base_Agent):
+#     """Actor critic A3C algorithm from deepmind paper https://arxiv.org/pdf/1602.01783.pdf"""
+#     agent_name = "AttA3C"
+#     def __init__(self, config):
+#         super(AttA3C, self).__init__(config)
+#         self.num_processes = multiprocessing.cpu_count()
+#         self.worker_processes = max(1, self.num_processes - 2)
+#         self.actor_critic = DRRLnet(10, 10, self.action_size, n_f_conv1 = 12, n_f_conv2 = 12,
+#                  att_emb_size=32, n_heads=2, n_att_stack=1, n_fc_layers=4, pad=True,
+#                  baseline_mode=False, n_baseMods=3)
+#         self.actor_critic_optimizer = SharedAdam(self.actor_critic.parameters(), lr=self.hyperparameters["learning_rate"], eps=1e-4)
+#
+#
