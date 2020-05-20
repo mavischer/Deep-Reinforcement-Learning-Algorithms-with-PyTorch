@@ -17,6 +17,7 @@ class A3C(Base_Agent):
         super(A3C, self).__init__(config)
         self.num_processes = multiprocessing.cpu_count()
         self.worker_processes = max(1, self.num_processes - 2)
+        print(f"running {self.worker_processes} worker processes plus optimizer process plus main process")
 
         self.actor_critic = DRRLnet(10, 10, self.action_size, n_f_conv1 = 12, n_f_conv2 = 12,
                  att_emb_size=32, n_heads=2, n_att_stack=1, n_fc_layers=4, pad=True,

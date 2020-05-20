@@ -188,8 +188,6 @@ class Base_Agent(object):
             self.reset_game()
             self.step()
             if save_and_print_results: self.save_and_print_result()
-            if self.episode_number % 1000 == 0:
-                print(f"{time.strftime('%H:%M:%S')}:episode {self.episode_number} done.")
         time_taken = time.time() - start
         if show_whether_achieved_goal: self.show_whether_achieved_goal()
         if self.config.save_model: self.locally_save_policy()
